@@ -47,12 +47,12 @@ def get_book_details(isbn: str):
     Returns:
         dict: Book details including author, title, summary, and cover URL.
     """
-
+#check if the isbn is valid or not
     if not is_isbn_valid(isbn):
         raise HTTPException(status_code=400, detail="ISBN is not valid")
     OPEN_URL = f"http://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&jscmd=data&format=json"
     response = requests.get(OPEN_URL)
-    Works_URL = f"https://openlibrary.org/isbn/{isbn}.json"
+    Works_URL = f"https://openlibrary.org/isbn/{isbn}.json" #  this url return a works key which is required for extracting the description/summary of the book.
     works_request = requests.get(Works_URL)
     works_response = works_request.json()
     works_key = works_response['works'][0]['key'] if 'works' in works_response else None
@@ -60,7 +60,7 @@ def get_book_details(isbn: str):
         summary_URL = f"http://openlibrary.org/{works_key}.json"
         summary_request = requests.get(summary_URL)
         summary_response = summary_request.json()
-        description_data = summary_response['description'] if 'description' in summary_response else None
+        description_data = summary_response['description'] if 'description' in summary_response else None # In some cases, descipion/summary is not available, for those books summary will be null
         if isinstance(description_data, dict) and "value" in description_data:
             summary = description_data["value"]
         else:
@@ -82,10 +82,13 @@ def get_book_details(isbn: str):
 
 @app.post("/books/",response_model=schemas.Book, status_code=status.HTTP_201_CREATED)
 def create_book(isbn:str, db: Session = Depends(get_db)):
+
     "store the book in the library database"
+
     book_details = get_book_details(isbn)
     title = book_details['title']
     query = crud.get_books_by_title(db, title=title)
+    #checks if the book already available on db or not
     if query:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -97,7 +100,9 @@ def create_book(isbn:str, db: Session = Depends(get_db)):
 
 @app.get("/books/", response_model=List[schemas.Book])
 def get_all_books(db: Session = Depends(get_db)):
+
     "return all the stored books in the library database"
+
     return crud.get_all_books(db)
 
 
